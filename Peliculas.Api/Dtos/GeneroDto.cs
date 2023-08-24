@@ -1,4 +1,6 @@
-﻿namespace Peliculas.Api.Dtos
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Peliculas.Api.Dtos
 {
     public class GeneroDto: GeneroDtoIn
     {
@@ -7,6 +9,7 @@
 
     public class GeneroDtoIn
     {
+        [StringLength(50)]
         public string Nombre { get; set; }
     }
 }

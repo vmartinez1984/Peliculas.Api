@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Peliculas.Api.Contexts;
+using Peliculas.Api.Filters;
 using Peliculas.Api.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +20,10 @@ var mapperConfig = new MapperConfiguration(mapperConfig =>
 IMapper mapper = mapperConfig.CreateMapper();
 builder.Services.AddSingleton(mapper);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(typeof(FiltroDeExcepcion));
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -33,7 +37,8 @@ builder.Services.AddCors(options =>
         //colocar la url en una variable uqe se lea desde appsetiings
         builder.WithOrigins("*")
         .AllowAnyMethod()
-        .AllowAnyHeader();
+        .AllowAnyHeader()
+        .WithExposedHeaders(new string[] { "cantidadTotalDeRegistros" });
     });
 });
 

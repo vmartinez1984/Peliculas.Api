@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Dtos;
 using Peliculas.Api.Entities;
+using Peliculas.Api.Helpers;
 
 namespace Peliculas.Api.Controllers
 {
@@ -24,12 +25,15 @@ namespace Peliculas.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get([FromQuery] PaginacionDto paginacion)
         {
             List<GeneroDto> generos;
             List<Genero> entities;
 
-            entities = await _appDbContext.Genero.ToListAsync();
+            var queryable = _appDbContext.Genero.AsQueryable();
+            await HttpContext.InsertarParametrosDePaginacionEnCabecera(queryable);
+            entities = await queryable.OrderBy(x => x.Id).Paginar(paginacion).ToListAsync();
+            //entities = await _appDbContext.Genero.ToListAsync();
             generos = _mapper.Map<List<GeneroDto>>(entities);
 
             return Ok(generos);
