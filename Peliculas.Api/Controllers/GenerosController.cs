@@ -89,13 +89,13 @@ namespace Peliculas.Api.Controllers
             {
                 return NotFound();
             }
-            var cine = await _appDbContext.Cine.FindAsync(id);
+            var cine = await _appDbContext.Genero.FindAsync(id);
             if (cine == null)
             {
                 return NotFound();
             }
 
-            _appDbContext.Cine.Remove(cine);
+            _appDbContext.Genero.Remove(cine);
             await _appDbContext.SaveChangesAsync();
 
             return NoContent();

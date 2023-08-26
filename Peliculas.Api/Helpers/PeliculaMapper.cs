@@ -16,6 +16,9 @@ namespace Peliculas.Api.Helpers
 
             CreateMap<Pelicula, PeliculaDto>();
             CreateMap<PeliculaDtoIn, Pelicula>();
+
+            CreateMap<Actor, ActorDto>();
+            CreateMap<ActorDtoIn, Actor>();            
         }
     }
 }

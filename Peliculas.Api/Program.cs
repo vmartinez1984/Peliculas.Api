@@ -1,6 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Peliculas.Api;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Filters;
 using Peliculas.Api.Helpers;
@@ -19,6 +19,10 @@ var mapperConfig = new MapperConfiguration(mapperConfig =>
 });
 IMapper mapper = mapperConfig.CreateMapper();
 builder.Services.AddSingleton(mapper);
+
+
+builder.Services.AddTransient<IAlmacenadorDeArchivos, AlmacenadorDeArchivosLocal>(c => new AlmacenadorDeArchivosLocal(builder.Environment,new HttpContextAccessor()));
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers(options =>
 {
@@ -46,7 +50,7 @@ var app = builder.Build();
 
 app.Use(async (context, next) =>
 {
-    using(var swapStream = new MemoryStream())
+    using (var swapStream = new MemoryStream())
     {
         var respuestaOriginal = context.Response.Body;
         context.Response.Body = swapStream;
@@ -55,7 +59,7 @@ app.Use(async (context, next) =>
 
         swapStream.Seek(0, SeekOrigin.Begin);
         string respuesta = new StreamReader(swapStream).ReadToEnd();
-        swapStream.Seek (0, SeekOrigin.Begin);
+        swapStream.Seek(0, SeekOrigin.Begin);
 
         await swapStream.CopyToAsync(respuestaOriginal);
         context.Response.Body = respuestaOriginal;
@@ -78,6 +82,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles();
 
 app.UseCors();
 

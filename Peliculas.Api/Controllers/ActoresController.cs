@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Dtos;
 using Peliculas.Api.Entities;
+using Peliculas.Api.Helpers;
 
 namespace Peliculas.Api.Controllers
 {
@@ -11,21 +13,34 @@ namespace Peliculas.Api.Controllers
     public class ActoresController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IAlmacenadorDeArchivos _almacenadorDeArchivos;
+        private readonly IMapper _mapper;
+        private string _contenedor = "Actores";
 
-        public ActoresController(AppDbContext context)
+        public ActoresController(
+            AppDbContext context,
+            IAlmacenadorDeArchivos almacenadorDeArchivos,
+            IMapper mapper
+        )
         {
             _context = context;
+            this._almacenadorDeArchivos = almacenadorDeArchivos;
+            this._mapper = mapper;
         }
 
         // GET: api/Actores
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Actor>>> GetActor()
+        public async Task<ActionResult<IEnumerable<ActorDto>>> GetActor([FromQuery] PaginacionDto paginacion)
         {
-          if (_context.Actor == null)
-          {
-              return NotFound();
-          }
-            return await _context.Actor.ToListAsync();
+            List<ActorDto> lista;
+            List<Actor> entities;
+
+            var queryable = _context.Actor.AsQueryable();
+            await HttpContext.InsertarParametrosDePaginacionEnCabecera(queryable);
+            entities = await queryable.OrderBy(x => x.Id).Paginar(paginacion).ToListAsync();            
+            lista = _mapper.Map<List<ActorDto>>(entities);
+
+            return lista;
         }
 
         // GET: api/Actores/5
@@ -87,8 +102,12 @@ namespace Peliculas.Api.Controllers
               return Problem("Entity set 'AppDbContext.Actor'  is null.");
           }
             Actor actor;
+            actor = _mapper.Map<Actor>(actorIn);
+            if(actorIn.Foto is not null)
+            {
+                actor.Foto = await _almacenadorDeArchivos.Guardar(_contenedor, actorIn.Foto);
+            }
 
-            actor = new Actor();
             _context.Actor.Add(actor);
             await _context.SaveChangesAsync();
 
