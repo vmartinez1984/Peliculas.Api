@@ -29,18 +29,6 @@ namespace Peliculas.Api.Migrations
                 {
                     table.PrimaryKey("PK_Cine", x => x.Id);
                 });
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropTable(
-                name: "Cine");
-
-            migrationBuilder.RenameColumn(
-                name: "Nombre",
-                table: "Genero",
-                newName: "Name");
-        }
+        }       
     }
 }

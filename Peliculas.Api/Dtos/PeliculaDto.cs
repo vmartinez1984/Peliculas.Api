@@ -1,12 +1,20 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Mvc;
+using Peliculas.Api.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace Peliculas.Api.Dtos
 {
-    public class PeliculaDto: PeliculaBaseDto
+    public class PeliculaDto : PeliculaBaseDto
     {
         public int Id { get; set; }
 
         public string Poster { get; set; }
+
+        public List<GeneroDto> Generos { get; set; }
+
+        public List<PeliculaActorDto> Actores { get; set; }
+
+        public List<CineDto> Cines { get; set; }
     }
 
     public class PeliculaBaseDto
@@ -39,7 +47,16 @@ namespace Peliculas.Api.Dtos
 
         [StringLength(1000)]
         public string? Resumen { get; set; }
-        public IFormFile Poster { get; set; }
+        public IFormFile? Poster { get; set; }
+
+        [ModelBinder(BinderType = typeof(TypeBinder<List<int>>))]
+        public List<int> GenerosId { get; set; }
+
+        [ModelBinder(BinderType = typeof(TypeBinder<List<int>>))]
+        public List<int> CinesId { get; set; }
+
+        [ModelBinder(BinderType = typeof(TypeBinder<List<ActorPeliculaDtoIn>>))]
+        public List<ActorPeliculaDtoIn> Actores { get; set; }
     }
 
 }

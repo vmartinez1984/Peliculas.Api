@@ -1,5 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite;
+using NetTopologySuite.Geometries;
 using Peliculas.Api;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Filters;
@@ -10,18 +12,29 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"), sqlServer => sqlServer.UseNetTopologySuite());
 });
 
-var mapperConfig = new MapperConfiguration(mapperConfig =>
-{
-    mapperConfig.AddProfile<PeliculaMapper>();
-});
-IMapper mapper = mapperConfig.CreateMapper();
-builder.Services.AddSingleton(mapper);
+builder.Services.AddSingleton<GeometryFactory>(NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326));
+
+//builder.AddAutoMapper()
+builder.Services.AddSingleton(provider =>
+    new MapperConfiguration(config =>
+    {
+        var geometry = provider.GetRequiredService<GeometryFactory>();
+        config.AddProfile(new PeliculaMapper(geometry));
+    }).CreateMapper()
+);
+
+//var mapperConfig = new MapperConfiguration(mapperConfig =>
+//{
+//    mapperConfig.AddProfile<PeliculaMapper>();
+//});
+//IMapper mapper = mapperConfig.CreateMapper();
+//builder.Services.AddSingleton(mapper);
 
 
-builder.Services.AddTransient<IAlmacenadorDeArchivos, AlmacenadorDeArchivosLocal>(c => new AlmacenadorDeArchivosLocal(builder.Environment,new HttpContextAccessor()));
+builder.Services.AddTransient<IAlmacenadorDeArchivos, AlmacenadorDeArchivosLocal>(c => new AlmacenadorDeArchivosLocal(builder.Environment, new HttpContextAccessor()));
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers(options =>

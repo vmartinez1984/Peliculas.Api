@@ -6,11 +6,24 @@ namespace Peliculas.Api.Entities
     {
         public int Id { get; set; }
 
-        [MaxLength(100)]
+        [Required]
+        [MaxLength(300)]
         public string Titulo { get; set; }
 
-        public bool EnCines { get; set; } = false;
+        public string? Resumen { get; set; }
 
-        //public bool  { get; set; }
+        public string? Trailer { get; set; }
+
+        public bool EnCines { get; set; }
+
+        public DateTime? FechaDeLanzamiento { get; set; }
+
+        public string? Poster { get; set; }
+
+        public List<PeliculasActores> PeliculasActores { get; set; }
+
+        public List<PeliculasGeneros> PeliculasGeneros { get; set; }
+
+        public List<PeliculasCines> PeliculasCines { get; set; }
     }
 }

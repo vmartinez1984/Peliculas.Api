@@ -10,12 +10,15 @@ namespace Peliculas.Api.Dtos
     public class CineDtoIn
     {
         [Required]
+        [StringLength(75)]
         public string Nombre { get; set; }
 
         [Required]
-        public float Longitud { get; set; }
+        [Range(-180,180)]
+        public double Longitud { get; set; }
 
         [Required]
-        public float Latitud { get; set; }
+        [Range(-180,180)]
+        public double Latitud { get; set; }
     }
 }

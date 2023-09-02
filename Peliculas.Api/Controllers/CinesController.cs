@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Dtos;
 using Peliculas.Api.Entities;
+using Peliculas.Api.Helpers;
 
 namespace Peliculas.Api.Controllers
 {
@@ -25,19 +26,17 @@ namespace Peliculas.Api.Controllers
 
         // GET: api/Cines
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CineDto>>> GetCine()
+        public async Task<ActionResult<IEnumerable<CineDto>>> GetCine([FromQuery] PaginacionDto paginacion)
         {
-            if (_context.Cine == null)
-            {
-                return NotFound();
-            }
-            List<CineDto> lista;
-            List<Cine> cines;
+            List<CineDto> dtos;
+            List<Cine> entities;
 
-            cines = await _context.Cine.ToListAsync();
-            lista = _mapper.Map<List<CineDto>>(cines);
+            var queryable = _context.Cine.AsQueryable();
+            await HttpContext.InsertarParametrosDePaginacionEnCabecera(queryable);
+            entities = await queryable.OrderBy(x => x.Id).Paginar(paginacion).ToListAsync();            
+            dtos = _mapper.Map<List<CineDto>>(entities);
 
-            return Ok(lista);
+            return Ok(dtos);
         }
 
         // GET: api/Cines/5
@@ -69,8 +68,8 @@ namespace Peliculas.Api.Controllers
 
             cine = await _context.Cine.FindAsync(id);
             cine.Nombre = cineDtoIn.Nombre;
-            cine.Latitud = cineDtoIn.Latitud;
-            cine.Longitud = cineDtoIn.Longitud;
+            //cine.Latitud = cineDtoIn.Latitud;
+            //cine.Longitud = cineDtoIn.Longitud;
             _context.Entry(cine).State = EntityState.Modified;
 
             try

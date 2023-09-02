@@ -21,6 +21,6 @@ namespace Peliculas.Api.Dtos
 
     public class ActorDtoIn: ActorBaseDto
     {     
-        public IFormFile Foto { get; set; }
+        public IFormFile? Foto { get; set; }
     }
 }

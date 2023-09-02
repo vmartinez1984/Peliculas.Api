@@ -14,5 +14,8 @@ namespace Peliculas.Api.Entities
         public string? Foto { get; set; }
 
         public string Biografia { get; set; }
+
+        public List<PeliculasActores> PeliculasActores { get; set; }
+
     }
 }

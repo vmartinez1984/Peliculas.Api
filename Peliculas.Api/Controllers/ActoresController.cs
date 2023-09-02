@@ -37,7 +37,7 @@ namespace Peliculas.Api.Controllers
 
             var queryable = _context.Actor.AsQueryable();
             await HttpContext.InsertarParametrosDePaginacionEnCabecera(queryable);
-            entities = await queryable.OrderBy(x => x.Id).Paginar(paginacion).ToListAsync();            
+            entities = await queryable.OrderBy(x => x.Id).Paginar(paginacion).ToListAsync();
             lista = _mapper.Map<List<ActorDto>>(entities);
 
             return lista;
@@ -47,10 +47,10 @@ namespace Peliculas.Api.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Actor>> GetActor(int id)
         {
-          if (_context.Actor == null)
-          {
-              return NotFound();
-          }
+            if (_context.Actor == null)
+            {
+                return NotFound();
+            }
             var actor = await _context.Actor.FindAsync(id);
 
             if (actor == null)
@@ -64,13 +64,16 @@ namespace Peliculas.Api.Controllers
         // PUT: api/Actores/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutActor(int id, Actor actor)
+        public async Task<IActionResult> PutActor(int id, [FromForm] ActorDtoIn actorIn)
         {
-            if (id != actor.Id)
-            {
-                return BadRequest();
-            }
+            Actor actor;
 
+            actor = await _context.Actor.FindAsync(id);
+            actor = _mapper.Map(actorIn, actor);
+            if (actorIn.Foto != null)
+            {
+                actor.Foto = await _almacenadorDeArchivos.EditarArchivo(actor.Foto, _contenedor, actorIn.Foto);
+            }
             _context.Entry(actor).State = EntityState.Modified;
 
             try
@@ -95,15 +98,15 @@ namespace Peliculas.Api.Controllers
         // POST: api/Actores
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Actor>> PostActor([FromForm]ActorDtoIn actorIn)
+        public async Task<ActionResult<Actor>> PostActor([FromForm] ActorDtoIn actorIn)
         {
-          if (_context.Actor == null)
-          {
-              return Problem("Entity set 'AppDbContext.Actor'  is null.");
-          }
+            if (_context.Actor == null)
+            {
+                return Problem("Entity set 'AppDbContext.Actor'  is null.");
+            }
             Actor actor;
             actor = _mapper.Map<Actor>(actorIn);
-            if(actorIn.Foto is not null)
+            if (actorIn.Foto is not null)
             {
                 actor.Foto = await _almacenadorDeArchivos.Guardar(_contenedor, actorIn.Foto);
             }
@@ -137,6 +140,25 @@ namespace Peliculas.Api.Controllers
         private bool ActorExists(int id)
         {
             return (_context.Actor?.Any(e => e.Id == id)).GetValueOrDefault();
+        }
+
+        [HttpPost("BuscarPorNombre")]
+        public async Task<ActionResult<List<PeliculaActorDto>>> BuscarPorNombre([FromBody] string nombre)
+        {
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                return new List<PeliculaActorDto>();
+            }
+
+            return await _context.Actor.Where(x => x.Nombre.Contains(nombre))
+                .Select(x => new PeliculaActorDto
+                {
+                    Id = x.Id,
+                    Nombre = x.Nombre,
+                    Foto = x.Foto
+                })
+                .Take(10)
+                .ToListAsync();
         }
     }
 }
