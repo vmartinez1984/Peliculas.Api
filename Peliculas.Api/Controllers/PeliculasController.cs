@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using AutoMapper;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Dtos;
 using Peliculas.Api.Entities;
-using Peliculas.Api.Migrations;
 
 namespace Peliculas.Api.Controllers
 {
@@ -31,17 +25,61 @@ namespace Peliculas.Api.Controllers
 
         // GET: api/Peliculas
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Pelicula>>> GetPelicula()
+        public async Task<ActionResult<LandingPageDto>> Get()
         {
-            if (_context.Pelicula == null)
+            var top = 6;
+            var hoy = DateTime.Today;
+
+            var proximosEstrenos = await _context.Pelicula
+                .Where(x => x.FechaDeLanzamiento > hoy)
+                .OrderBy(x => x.FechaDeLanzamiento)
+                .Take(top)
+                .ToListAsync();
+
+            var peliculasEnCines = await _context.Pelicula
+                .Where(x => x.EnCines)
+                .OrderBy(x => x.FechaDeLanzamiento)
+                .Take(top)
+                .ToListAsync();
+
+            return new LandingPageDto
             {
-                return NotFound();
-            }
-            return await _context.Pelicula.ToListAsync();
+                PeliculasEnCines = _mapper.Map<List<PeliculaDto>>(peliculasEnCines),
+                PeliculasProximosEstrenos = _mapper.Map<List<PeliculaDto>>(proximosEstrenos)
+            };
+        }
+
+        [HttpGet("PutGet/{id:int}")]
+        public async Task<ActionResult<PeliculaPutGetDto>> PutGet(int id)
+        {
+            var peliculaActionREsult = await GetPelicula(id);
+            if (peliculaActionREsult == null) { return NotFound(); }
+
+            var pelicula = peliculaActionREsult.Value;
+            var generosSeleccionadosIds = pelicula.Generos.Select(x => x.Id).ToList();
+            var generosNoSeleccionados = await _context.Genero.Where(x => !generosSeleccionadosIds.Contains(x.Id)).ToListAsync();
+            var cinesSeleccionadosIds = pelicula.Cines.Select(x => x.Id).ToList();
+            var cinessNoSeleccionados = await _context.Cine.Where(x => !cinesSeleccionadosIds.Contains(x.Id)).ToListAsync();
+            //var actoresSeleccionadosIds = pelicula.Actores.Select(x => x.Id).ToList();
+            //var actoresNoSeleccionados = await _context.Actor.Where(x => !actoresSeleccionadosIds.Contains(x.Id)).ToListAsync();
+            var generosNoSeleccionadosDto = _mapper.Map<List<GeneroDto>>(generosNoSeleccionados);
+            var cinesNoSelecciondaosDto = _mapper.Map<List<CineDto>>(cinessNoSeleccionados);
+
+            var respuesta = new PeliculaPutGetDto
+            {
+                Pelicula = pelicula,
+                GenerosSeleccionados = pelicula.Generos,
+                GenerosNoSeleccionados = generosNoSeleccionadosDto,
+                CinesSeleccionados = pelicula.Cines,
+                CinesNoSeleccionados = cinesNoSelecciondaosDto,
+                Actores = pelicula.Actores
+            };
+
+            return respuesta;
         }
 
         // GET: api/Peliculas/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<PeliculaDto>> GetPelicula(int id)
         {
             if (_context.Pelicula == null)
@@ -49,20 +87,20 @@ namespace Peliculas.Api.Controllers
                 return NotFound();
             }
             var pelicula = await _context.Pelicula
-                .Include(x=>x.PeliculasGeneros)
-                    .ThenInclude(x=>x.Genero)
-                .Include(x=> x.PeliculasActores)
-                    .ThenInclude(x=>x.Actor)
-                .Include(x=>x.PeliculasCines)
-                     .ThenInclude(x=>x.Cine)
-                .FirstOrDefaultAsync(x=> x.Id == id);
+                .Include(x => x.PeliculasGeneros)
+                    .ThenInclude(x => x.Genero)
+                .Include(x => x.PeliculasActores)
+                    .ThenInclude(x => x.Actor)
+                .Include(x => x.PeliculasCines)
+                     .ThenInclude(x => x.Cine)
+                .FirstOrDefaultAsync(x => x.Id == id);
 
             if (pelicula == null)
             {
                 return NotFound();
             }
             var dto = _mapper.Map<PeliculaDto>(pelicula);
-            dto.Actores = dto.Actores.OrderBy(x=> x.Orden).ToList();
+            dto.Actores = dto.Actores.OrderBy(x => x.Orden).ToList();
 
             return dto;
         }
@@ -70,30 +108,23 @@ namespace Peliculas.Api.Controllers
         // PUT: api/Peliculas/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPelicula(int id, Pelicula pelicula)
+        public async Task<IActionResult> PutPelicula(int id, [FromForm] PeliculaDtoIn peliculaDtoIn)
         {
-            if (id != pelicula.Id)
-            {
-                return BadRequest();
-            }
+            var pelicula = await _context.Pelicula
+               .Include(x => x.PeliculasActores)
+               .Include(x => x.PeliculasGeneros)
+               .Include(x => x.PeliculasCines)
+               .FirstOrDefaultAsync(x => x.Id == id);
+            if (pelicula == null) { return NotFound(); }
 
+            pelicula = _mapper.Map(peliculaDtoIn, pelicula);
+            if (peliculaDtoIn.Poster != null)
+            {
+                await _almacenadorDeArchivos.EditarArchivo(pelicula.Poster, _contenedor, peliculaDtoIn.Poster);
+            }
+            EscribirOrdenDeLosActores(pelicula);
             _context.Entry(pelicula).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!PeliculaExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }

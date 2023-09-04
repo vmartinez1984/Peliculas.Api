@@ -59,4 +59,11 @@ namespace Peliculas.Api.Dtos
         public List<ActorPeliculaDtoIn> Actores { get; set; }
     }
 
+    public class LandingPageDto
+    {
+        public List<PeliculaDto> PeliculasEnCines { get; set; }
+
+        public List<PeliculaDto> PeliculasProximosEstrenos { get; set; }
+    }
+
 }
