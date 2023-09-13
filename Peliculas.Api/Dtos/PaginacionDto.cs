@@ -1,7 +1,7 @@
 ﻿namespace Peliculas.Api.Dtos
 {
     public class PaginacionDto
-    {
+    {        
         public int Pagina { get; set; } = 1;
 
         private int registrosPorPagina = 50;

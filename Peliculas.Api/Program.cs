@@ -1,11 +1,16 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using Peliculas.Api;
 using Peliculas.Api.Contexts;
 using Peliculas.Api.Filters;
 using Peliculas.Api.Helpers;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +38,27 @@ builder.Services.AddSingleton(provider =>
 //IMapper mapper = mapperConfig.CreateMapper();
 //builder.Services.AddSingleton(mapper);
 
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+builder.Services.AddIdentity<IdentityUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(
+        opciones => opciones.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["LLaveJwt"])),
+            ClockSkew = TimeSpan.Zero
+        }
+);
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("EsAdmin", policy =>
+    {
+        policy.RequireClaim("role", "admin");
+    });
+});
 
 builder.Services.AddTransient<IAlmacenadorDeArchivos, AlmacenadorDeArchivosLocal>(c => new AlmacenadorDeArchivosLocal(builder.Environment, new HttpContextAccessor()));
 builder.Services.AddHttpContextAccessor();
@@ -101,6 +127,8 @@ app.UseStaticFiles();
 app.UseCors();
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

@@ -1,4 +1,7 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Peliculas.Api.Contexts;
@@ -9,22 +12,26 @@ namespace Peliculas.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
     public class PeliculasController : ControllerBase
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IAlmacenadorDeArchivos _almacenadorDeArchivos;
+        private readonly UserManager<IdentityUser> _userManager;
         private string _contenedor = "peliculas";
 
-        public PeliculasController(AppDbContext context, IMapper mapper, IAlmacenadorDeArchivos almacenadorDeArchivos)
+        public PeliculasController(AppDbContext context, IMapper mapper, IAlmacenadorDeArchivos almacenadorDeArchivos, UserManager<IdentityUser> userManager)
         {
             _context = context;
             _mapper = mapper;
             _almacenadorDeArchivos = almacenadorDeArchivos;
+            this._userManager = userManager;
         }
 
         // GET: api/Peliculas
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<LandingPageDto>> Get()
         {
             var top = 6;
@@ -79,8 +86,9 @@ namespace Peliculas.Api.Controllers
         }
 
         // GET: api/Peliculas/5
-        [HttpGet("{id:int}")]
-        public async Task<ActionResult<PeliculaDto>> GetPelicula(int id)
+        [HttpGet("{peliculaId:int}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<PeliculaDto>> GetPelicula(int peliculaId)
         {
             if (_context.Pelicula == null)
             {
@@ -93,14 +101,33 @@ namespace Peliculas.Api.Controllers
                     .ThenInclude(x => x.Actor)
                 .Include(x => x.PeliculasCines)
                      .ThenInclude(x => x.Cine)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(x => x.Id == peliculaId);
+            var promedioVoto = 0.0;
+            var usuarioVoto = 0;
+
 
             if (pelicula == null)
             {
                 return NotFound();
             }
+            if (await _context.Rating.AnyAsync(x => x.PeliculaId == pelicula.Id))
+            {
+                promedioVoto = await _context.Rating.Where(x => x.PeliculaId == peliculaId).AverageAsync(x => x.Puntuacion);
+                if (HttpContext.User.Identity.IsAuthenticated)
+                {
+                    var email = HttpContext.User.Claims.FirstOrDefault(x => x.Type == "email").Value;
+                    var usuario = await _userManager.FindByNameAsync(email);
+                    var rating = await _context.Rating.FirstOrDefaultAsync(x=> x.UsuarioId == usuario.Id && x.PeliculaId == peliculaId);
+                    if(rating != null)
+                    {
+                        usuarioVoto = rating.Puntuacion;
+                    }
+                }
+            }
             var dto = _mapper.Map<PeliculaDto>(pelicula);
             dto.Actores = dto.Actores.OrderBy(x => x.Orden).ToList();
+            dto.VotoUsuario = usuarioVoto;
+            dto.PromedioVoto = promedioVoto;
 
             return dto;
         }

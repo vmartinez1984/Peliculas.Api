@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Peliculas.Api.Contexts;
@@ -10,6 +12,7 @@ namespace Peliculas.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
     public class GenerosController : ControllerBase
     {
         private readonly AppDbContext _appDbContext;
@@ -39,16 +42,29 @@ namespace Peliculas.Api.Controllers
             return Ok(generos);
         }
 
+        [HttpGet("Todos")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAll()
+        {
+            List<GeneroDto> generos;
+            List<Genero> entities;
+
+            entities = await _appDbContext.Genero.ToListAsync();
+            generos = _mapper.Map<List<GeneroDto>>(entities);
+
+            return Ok(generos);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)
         {
             GeneroDto genero;
             Genero entity;
 
-            entity = await _appDbContext.Genero.Where(x=> x.Id == id).FirstOrDefaultAsync();
-            if (entity is null)            
+            entity = await _appDbContext.Genero.Where(x => x.Id == id).FirstOrDefaultAsync();
+            if (entity is null)
                 return NotFound();
-            
+
             genero = _mapper.Map<GeneroDto>(entity);
 
             return Ok(genero);
